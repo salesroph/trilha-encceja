@@ -46,36 +46,37 @@
     }
 
     const ios = isIos();
-    const canPrompt = Boolean(deferredPrompt);
     const title = 'Instalar app';
     const message = ios
       ? 'Tenha a Trilha ENCCEJA na tela inicial para estudar com um toque.'
       : 'Adicione a Trilha ENCCEJA à tela inicial para estudar como um app.';
-    const action = canPrompt
-      ? '<button class="button" data-pwa-install>Instalar agora</button>'
-      : ios
-        ? '<button class="button" data-pwa-help>Como instalar</button>'
-        : '<button class="button" data-pwa-help>Ver instruções</button>';
+    const action = '<button class="button" type="button" data-pwa-install>Instalar aplicativo</button>'; 
 
     container.innerHTML = `<div class="pwa-banner" role="status">
       <div class="pwa-copy"><strong>${title}</strong><p>${message}</p></div>
       <div class="pwa-actions">${action}<button class="pwa-dismiss" type="button" aria-label="Dispensar aviso" data-pwa-dismiss>Agora não</button></div>
-      <div class="pwa-help" hidden>${ios
-        ? 'No Safari: toque em Compartilhar e depois em “Adicionar à Tela de Início”.'
-        : 'No menu do navegador, escolha “Instalar app” ou “Adicionar à tela inicial”.'}</div>
+      <div class="pwa-help" role="status" hidden>${ios
+        ? 'No iPhone: toque em Compartilhar (quadrado com seta), escolha “Adicionar à Tela de Início” e depois “Adicionar”.'
+        : 'Se a instalação não abrir, no Chrome toque em ⋮ e escolha “Instalar app” ou “Adicionar à tela inicial”. Se estiver dentro de outro aplicativo, abra o link no Chrome primeiro.'}</div>
     </div>`;
 
     container.querySelector('[data-pwa-install]')?.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice.catch(() => null);
-      deferredPrompt = null;
-      render(instance);
-    });
-    container.querySelector('[data-pwa-help]')?.addEventListener('click', event => {
       const help = container.querySelector('.pwa-help');
-      help.hidden = !help.hidden;
-      event.currentTarget.textContent = help.hidden ? 'Como instalar' : 'Fechar instruções';
+      if (!deferredPrompt) { help.hidden = false; return; }
+      // prompt() must run directly in the tap handler, before any await.
+      const promptEvent = deferredPrompt;
+      deferredPrompt = null;
+      try {
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice?.outcome === 'accepted') {
+          container.replaceChildren();
+        } else {
+          help.hidden = false;
+        }
+      } catch {
+        help.hidden = false;
+      }
     });
     container.querySelector('[data-pwa-dismiss]')?.addEventListener('click', () => {
       try { sessionStorage.setItem('trilha-pwa-dismissed', '1'); } catch {}
