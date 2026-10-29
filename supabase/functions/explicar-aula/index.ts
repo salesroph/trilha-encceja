@@ -59,19 +59,14 @@ Deno.serve(async (request) => {
 
     const body = await request.json().catch(() => null);
     const lessonId = typeof body?.lessonId === "string" ? body.lessonId : "";
-    const provider = typeof body?.provider === "string" ? body.provider : "deepseek";
     const topic = Object.hasOwn(topics, lessonId) ? topics[lessonId] : undefined;
     const question = typeof body?.question === "string" ? body.question.trim().slice(0, 400) : "";
     if (!topic) return json({ error: "Aula não encontrada." }, 400);
-    if (provider !== "deepseek" && provider !== "glm") return json({ error: "Provedor de explicação inválido." }, 400);
 
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const apiKeyName = provider === "deepseek" ? "NVIDIA_DEEPSEEK_API_KEY" : "NVIDIA_GLM_API_KEY";
-    const modelName = provider === "deepseek" ? "NVIDIA_DEEPSEEK_MODEL" : "NVIDIA_GLM_MODEL";
-    const nimApiKey = Deno.env.get(apiKeyName);
-    const nimModel = Deno.env.get(modelName);
-    if (!serviceKey || !supabaseUrl || !nimApiKey || !nimModel) return json({ error: "A explicação por IA ainda está em configuração." }, 503);
+    const providers = ["DEEPSEEK", "GLM"].map((name) => ({ name, key: Deno.env.get(`NVIDIA_${name}_API_KEY`), model: Deno.env.get(`NVIDIA_${name}_MODEL`) })).filter((item) => item.key && item.model);
+    if (!serviceKey || !supabaseUrl || !providers.length) return json({ error: "A explicação por IA ainda está em configuração." }, 503);
 
     const quotaResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_ai_explanation_quota`, {
       method: "POST",
@@ -87,22 +82,22 @@ Deno.serve(async (request) => {
     const input = question
       ? `O estudante marcou “Não entendi” e perguntou: ${question}`
       : "O estudante marcou “Não entendi”. Explique de outra maneira, começando pelo conceito mais básico.";
-    const aiResponse = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${nimApiKey}`, "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        model: nimModel,
-        messages: [{ role: "system", content: instructions }, { role: "user", content: input }],
-        stream: false,
-        max_tokens: 700,
-        temperature: 0.3,
-      }),
-    });
-    if (!aiResponse.ok) return json({ error: "Não consegui gerar uma explicação agora. Tente novamente mais tarde." }, 502);
-    const text = getOutputText(await aiResponse.json()).slice(0, 5000);
-    if (!text) return json({ error: "A IA não retornou uma explicação. Tente novamente." }, 502);
-    return json({ lessonId, area: topic.area, title: topic.title, explanation: text });
-  } catch {
+    for (const provider of providers) {
+      try {
+        const aiResponse = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+          method: "POST", signal: AbortSignal.timeout(30000),
+          headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ model: provider.model, messages: [{ role: "system", content: instructions }, { role: "user", content: input }], stream: false, max_tokens: 1200, temperature: 0.3 }),
+        });
+        if (!aiResponse.ok) { console.error("AI provider status", provider.name, aiResponse.status); continue; }
+        const text = getOutputText(await aiResponse.json()).slice(0, 5000);
+        if (text) return json({ lessonId, area: topic.area, title: topic.title, explanation: text });
+        console.error("AI provider returned no answer", provider.name);
+      } catch (error) { console.error("AI provider failed", provider.name, error instanceof Error ? error.name : "unknown"); }
+    }
+    return json({ error: "As explicações por IA estão indisponíveis no momento. Tente novamente mais tarde." }, 502);
+  } catch (error) {
+    console.error("AI request failed", error);
     return json({ error: "Não consegui gerar uma explicação agora. Tente novamente mais tarde." }, 500);
   }
 });

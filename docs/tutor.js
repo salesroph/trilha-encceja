@@ -18,14 +18,14 @@ async function askTutor(id) {
   panel.hidden=false;
   if(panel.dataset.lesson===id){panel.scrollIntoView({behavior:'smooth',block:'nearest'});return;}
   panel.dataset.lesson=id;
-  panel.innerHTML='<strong>Vamos tentar de outro jeito</strong><p>Escolha uma IA e, se quiser, conte sua dúvida. Você pode pedir até 5 explicações por dia.</p><label for="tutor-provider">IA para explicar:</label><select id="tutor-provider"><option value="deepseek">DeepSeek</option><option value="glm">GLM</option></select><label for="tutor-doubt">Se quiser, conte qual parte ficou difícil:</label><textarea id="tutor-doubt" maxlength="400" rows="3" placeholder="Ex.: como encontro 20% de um valor?"></textarea><button class="button secondary" id="tutor-retry" type="button">Pedir explicação</button><p id="tutor-status" role="status"></p><div id="tutor-answer"></div>';
+  panel.innerHTML='<strong>Vamos tentar de outro jeito</strong><p>Conte sua dúvida se quiser. Você pode pedir até 5 explicações por dia.</p><label for="tutor-doubt">Qual parte ficou difícil?</label><textarea id="tutor-doubt" maxlength="400" rows="3" placeholder="Ex.: como encontro 20% de um valor?"></textarea><button class="button secondary" id="tutor-retry" type="button">Pedir explicação</button><p id="tutor-status" role="status"></p><div id="tutor-answer"></div>';
   const status=panel.querySelector('#tutor-status'),answer=panel.querySelector('#tutor-answer'),retry=panel.querySelector('#tutor-retry');
   async function explain(){
     const doubt=panel.querySelector('#tutor-doubt').value.trim();
     retry.disabled=true;status.textContent='Preparando outra explicação...';answer.textContent='';
     try {
       if(typeof window.requestLessonExplanation!=='function')throw new Error('unavailable');
-      const result=await window.requestLessonExplanation(id,doubt,panel.querySelector('#tutor-provider').value);
+      const result=await window.requestLessonExplanation(id,doubt);
       if(!result || typeof result!=='string')throw new Error('unavailable');
       status.textContent='Uma nova explicação para você:';answer.textContent=result;
     } catch(e) {

@@ -14,10 +14,10 @@ accountUI();
 function showRecovery(){box.innerHTML='<strong>Escolha uma nova senha</strong><form id="recovery"><input type="password" name="password" minlength="6" autocomplete="new-password" required aria-label="Nova senha" placeholder="Nova senha"><button class="button">Salvar nova senha</button></form><p id="account-status" class="status" aria-live="polite"></p>';document.querySelector('#recovery').onsubmit=async e=>{e.preventDefault();const password=e.target.password.value;const {error}=await client.auth.updateUser({password});e.target.password.value='';if(error){status('Não foi possível atualizar a senha: '+error.message,true);return}status('Senha atualizada.');const {data}=await client.auth.getUser();if(data.user)await loadAccount(data.user)};}
 
 // A chave do provedor de IA fica somente na função protegida do Supabase.
-window.requestLessonExplanation=async (lessonId,doubt,provider)=>{
+window.requestLessonExplanation=async (lessonId,doubt)=>{
   const {data:sessionData,error:sessionError}=await client.auth.getSession();
   if(sessionError||!sessionData.session)throw new Error('signin');
-  const {data,error}=await client.functions.invoke('explicar-aula',{body:{lessonId,question:doubt,provider}});
+  const {data,error}=await client.functions.invoke('explicar-aula',{body:{lessonId,question:doubt}});
   if(error){const status=error.context?.status;throw new Error(status===401?'signin':status===429?'quota':'unavailable');}
   if(!data?.explanation)throw new Error('unavailable');
   return data.explanation;
