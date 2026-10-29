@@ -10,6 +10,14 @@ const topics: Record<string, { area: string; title: string; scope: string }> = {
   ling: { area: "Linguagens", title: "Ideia principal e ponto de vista", scope: "ideia principal, finalidade, opinião e justificativa em textos" },
   nat: { area: "Ciências da Natureza", title: "Saúde e prevenção", scope: "prevenção, saneamento, transmissão de doenças e saúde coletiva" },
   hum: { area: "Ciências Humanas", title: "Cidadania e direitos", scope: "direitos, cidadania, participação social e políticas públicas" },
+  "mat-graficos-tabelas": { area: "Matemática", title: "Gráficos e tabelas do dia a dia", scope: "leitura de gráficos e tabelas, diferenças, médias e variação percentual" },
+  "mat-medidas": { area: "Matemática", title: "Medidas, escala e espaço", scope: "unidades de medida, conversão, escala e área de retângulos" },
+  "ling-generos": { area: "Linguagens", title: "Gênero, finalidade e linguagem", scope: "gêneros textuais, finalidade, linguagem verbal e visual" },
+  "ling-leitura": { area: "Linguagens", title: "Informação explícita e inferência", scope: "informações explícitas, pistas textuais e inferência" },
+  "nat-energia": { area: "Ciências da Natureza", title: "Energia, tecnologia e consumo", scope: "transformações de energia, potência, eficiência e consumo" },
+  "nat-ecologia": { area: "Ciências da Natureza", title: "Ecossistemas e equilíbrio", scope: "relações ecológicas, cadeias alimentares, decomposição e biodiversidade" },
+  "hum-territorio": { area: "Ciências Humanas", title: "Território, trabalho e desigualdade", scope: "território, trabalho, acesso a serviços e desigualdade socioespacial" },
+  "hum-democracia": { area: "Ciências Humanas", title: "Democracia, participação e memória", scope: "democracia, participação social, memória e fontes históricas" },
 };
 
 const json = (body: unknown, status = 200) =>
