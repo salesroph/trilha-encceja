@@ -70,7 +70,8 @@ Deno.serve(async (request) => {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_user_id: userId, p_user_limit: 5, p_global_limit: 100 }),
     });
-    if (!quotaResponse.ok || (await quotaResponse.json()) !== true) {
+    if (!quotaResponse.ok) return json({ error: "Não foi possível verificar o limite de uso. Tente novamente mais tarde." }, 503);
+    if ((await quotaResponse.json()) !== true) {
       return json({ error: "O limite diário de explicações por IA foi atingido. Tente novamente amanhã." }, 429);
     }
 
