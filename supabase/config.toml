@@ -1,0 +1,3 @@
+[auth]
+site_url = "https://salesroph.github.io/trilha-encceja/"
+additional_redirect_urls = ["https://salesroph.github.io/trilha-encceja/"]

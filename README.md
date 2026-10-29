@@ -1,5 +1,7 @@
 ﻿# Trilha ENCCEJA
 
-Protótipo de estudo para ensino médio, otimizado para celulares. Uma aula inicial por área, com explicação, exercícios autorais, revisão no mesmo dia e revisão no dia seguinte antes de mudar de assunto. O progresso e as respostas ficam apenas no armazenamento local do navegador; não há sincronização entre dispositivos.
+Protótipo de estudo para ensino médio, otimizado para celulares. Uma aula inicial por área, com explicação, exercícios autorais e revisões no mesmo dia e no dia seguinte.
 
-O site está na pasta `docs` e pode ser publicado no GitHub Pages a partir da branch `main`, pasta `/docs`. Para testar localmente, abra `docs/index.html` no navegador. A página de fontes registra as apostilas de 2006 e o caderno de Matemática de 2020 utilizado como referência contextual. As aulas não representam uma análise das provas recentes nem cobrem todo o exame.
+O site é publicado via GitHub Pages na pasta `docs`. O Supabase Auth fornece login por e-mail e senha; a tabela `study_progress` usa políticas de segurança por usuário para sincronizar o progresso. O aplicativo usa apenas a chave pública. Sem login, os dados ficam no navegador; o progresso anterior sem login não é importado automaticamente para uma conta. `supabase/schema.sql` documenta o esquema aplicado ao projeto.
+
+A primeira versão não cobre todo o exame nem representa uma análise completa das provas recentes. A página de fontes registra as apostilas e o caderno consultado.
