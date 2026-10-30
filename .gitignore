@@ -1,4 +1,11 @@
-﻿.openai/
-fontes/
-dist/
+# Ferramentas e arquivos locais
+.openai/
 supabase/.temp/
+node_modules/
+.env*
+
+# Versão antiga do site (não publicada)
+dist/
+
+# PDFs de referência baixados do Inep (links oficiais estão no site)
+fontes/

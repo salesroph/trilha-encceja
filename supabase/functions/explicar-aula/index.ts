@@ -160,7 +160,7 @@ Deno.serve(async (request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const providers = ["DEEPSEEK", "GLM"].map((name) => ({ name, key: Deno.env.get(`NVIDIA_${name}_API_KEY`), model: Deno.env.get(`NVIDIA_${name}_MODEL`) })).filter((item) => item.key && item.model);
     if (!serviceKey || !supabaseUrl || !providers.length) return json({ error: "A explicação por IA ainda está em configuração." }, 503);
-    if (body?.diagnose === true && userId === "66e712ce-a1e2-4269-8cbf-91584ea2f5d1") {
+    if (body?.diagnose === true && userId === Deno.env.get("ADMIN_USER_ID")) {
       const results = await Promise.all(providers.map(async (provider) => {
         try {
           const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", { method: "POST", signal: AbortSignal.timeout(15000), headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: provider.model, messages: [{ role: "user", content: "Oi" }], max_tokens: 20, stream: false }) });
