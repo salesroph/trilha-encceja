@@ -49,6 +49,7 @@ const curriculum = [
  ['Ética envolve refletir sobre ações, valores e suas consequências para as pessoas e a vida coletiva. Argumentar exige apresentar razões e considerar objeções, em vez de apenas repetir uma opinião.','Cultura compreende práticas, saberes e valores construídos socialmente. Respeitar a diversidade implica reconhecer diferenças sem naturalizar discriminações ou negar direitos.'], 'Identifique o argumento, os envolvidos e as consequências da escolha.',
  [['Uma reflexão ética sobre uma decisão considera',['consequências para as pessoas','somente a pressa','apenas a opinião mais repetida','nenhum valor'],0,'A ética examina razões, valores e consequências.'],['Respeitar a diversidade cultural significa',['reconhecer diferenças e direitos','impor uma única cultura','aceitar discriminação','negar a história dos grupos'],0,'Reconhecimento de diferenças não justifica negar direitos.'],['Um argumento é',['uma razão apresentada para sustentar uma ideia','qualquer palavra isolada','uma ordem sem justificativa','uma imagem sem contexto'],0,'Argumentos oferecem razões para uma posição.'],['Uma prática cultural pode ser',['um saber compartilhado por uma comunidade','apenas um produto industrial','sempre igual em todas as sociedades','uma característica exclusivamente biológica'],0,'Saberes e práticas são construídos e compartilhados socialmente.']]]
 ];
+if (typeof curriculumMore !== 'undefined') curriculum.push(...curriculumMore);
 
 const curriculumMeta = {
   'Matemática': ['◫', 'encceja_matematica_ens_medio.pdf'],
