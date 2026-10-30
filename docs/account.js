@@ -22,3 +22,11 @@ window.requestLessonExplanation=async (lessonId,doubt)=>{
   if(!data?.explanation)throw new Error('unavailable');
   return data.explanation;
 };
+window.requestAIExam=async area=>{
+  const {data:sessionData,error:sessionError}=await client.auth.getSession();
+  if(sessionError||!sessionData.session)throw new Error('signin');
+  const {data,error}=await client.functions.invoke('explicar-aula',{body:{mode:'simulado',area}});
+  if(error){const status=error.context?.status;throw new Error(status===401?'signin':status===429?'quota':'unavailable');}
+  if(!Array.isArray(data?.questions)||!data.questions.length)throw new Error('unavailable');
+  return data.questions;
+};

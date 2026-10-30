@@ -89,6 +89,59 @@ async function authenticatedUser(authHeader: string | null): Promise<string | nu
   return typeof user?.id === "string" ? user.id : null;
 }
 
+const examAreas: Record<string, string> = { mat: "Matemática", ling: "Linguagens e Códigos", nat: "Ciências da Natureza", hum: "Ciências Humanas", misto: "todas as áreas" };
+
+type Provider = { name: string; key?: string; model?: string };
+type ExamQuestion = { enunciado: string; alternativas: string[]; correta: number; explicacao: string; tema: string };
+
+function parseExam(text: string): ExamQuestion[] {
+  const start = text.indexOf("{"), end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return [];
+  let data: any;
+  try { data = JSON.parse(text.slice(start, end + 1)); } catch { return []; }
+  if (!Array.isArray(data?.questoes)) return [];
+  const str = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
+  return data.questoes.map((q: any) => ({
+    enunciado: str(q?.enunciado, 1200),
+    alternativas: Array.isArray(q?.alternativas) ? q.alternativas.map((a: unknown) => str(a, 300).replace(/^[A-Da-d][).]\s*/, "")) : [],
+    correta: Number(q?.correta),
+    explicacao: str(q?.explicacao, 800),
+    tema: str(q?.tema, 120),
+  })).filter((q: ExamQuestion) => q.enunciado && q.alternativas.length === 4 && q.alternativas.every(Boolean) && Number.isInteger(q.correta) && q.correta >= 0 && q.correta <= 3 && q.explicacao);
+}
+
+async function generateExam(area: unknown, userId: string, supabaseUrl: string, serviceKey: string, providers: Provider[]) {
+  if (typeof area !== "string" || !Object.hasOwn(examAreas, area)) return json({ error: "Área não encontrada." }, 400);
+  const quotaResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_ai_explanation_quota`, {
+    method: "POST",
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_user_id: userId, p_user_limit: 5, p_global_limit: 100 }),
+  });
+  if (!quotaResponse.ok) return json({ error: "Não foi possível verificar o limite de uso. Tente novamente mais tarde." }, 503);
+  if ((await quotaResponse.json()) !== true) return json({ error: "O limite diário de uso da IA foi atingido. Tente novamente amanhã." }, 429);
+
+  // Sorteia os conteúdos para que cada simulado seja diferente.
+  const pool = Object.entries(topics).filter(([id]) => area === "misto" || id === area || id.startsWith(area + "-")).map(([, t]) => t);
+  const chosen = pool.sort(() => Math.random() - 0.5).slice(0, 10);
+  const list = chosen.map((t, i) => `${i + 1}. ${t.area} — ${t.title} (${t.scope})`).join("\n");
+  const instructions = `Você elabora questões inéditas no estilo do ENCCEJA Ensino Médio (Inep), para jovens e adultos. Cada questão deve partir de uma situação do cotidiano, um pequeno texto, dado, tabela descrita em texto ou citação curta, e cobrar interpretação e raciocínio, não decoreba. Linguagem clara, português brasileiro correto. Exatamente 4 alternativas plausíveis e apenas UMA correta; confira os cálculos antes de responder. Não copie questões oficiais e não cite fontes inventadas. Responda SOMENTE com JSON válido, sem texto fora dele, no formato {"questoes":[{"tema":"...","enunciado":"...","alternativas":["...","...","...","..."],"correta":0,"explicacao":"..."}]}, em que "correta" é o índice (0 a 3) da alternativa certa e "explicacao" resolve a questão em até 3 frases.`;
+  const input = `Crie ${chosen.length} questões de ${examAreas[area]}, uma para cada conteúdo abaixo, nesta ordem. Varie a posição da alternativa correta.\n${list}`;
+  for (const provider of providers) {
+    try {
+      const aiResponse = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+        method: "POST", signal: AbortSignal.timeout(70000),
+        headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ model: provider.model, messages: [{ role: "system", content: instructions }, { role: "user", content: input }], stream: false, max_tokens: 6000, temperature: 0.7 }),
+      });
+      if (!aiResponse.ok) { console.error("AI exam status", provider.name, aiResponse.status); continue; }
+      const questions = parseExam(getOutputText(await aiResponse.json()));
+      if (questions.length >= 5) return json({ area, questions });
+      console.error("AI exam returned too few valid questions", provider.name, questions.length);
+    } catch (error) { console.error("AI exam failed", provider.name, error instanceof Error ? error.name : "unknown"); }
+  }
+  return json({ error: "Não consegui gerar o simulado agora." }, 502);
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -101,7 +154,7 @@ Deno.serve(async (request) => {
     const lessonId = typeof body?.lessonId === "string" ? body.lessonId : "";
     const topic = Object.hasOwn(topics, lessonId) ? topics[lessonId] : undefined;
     const question = typeof body?.question === "string" ? body.question.trim().slice(0, 400) : "";
-    if (!topic) return json({ error: "Aula não encontrada." }, 400);
+    if (!topic && body?.mode !== "simulado") return json({ error: "Aula não encontrada." }, 400);
 
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -116,6 +169,9 @@ Deno.serve(async (request) => {
       }));
       return json({ results });
     }
+
+    if (body?.mode === "simulado") return await generateExam(body?.area, userId, supabaseUrl, serviceKey, providers);
+    if (!topic) return json({ error: "Aula não encontrada." }, 400);
 
     const quotaResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_ai_explanation_quota`, {
       method: "POST",
