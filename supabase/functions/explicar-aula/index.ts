@@ -18,6 +18,22 @@ const topics: Record<string, { area: string; title: string; scope: string }> = {
   "nat-ecologia": { area: "Ciências da Natureza", title: "Ecossistemas e equilíbrio", scope: "relações ecológicas, cadeias alimentares, decomposição e biodiversidade" },
   "hum-territorio": { area: "Ciências Humanas", title: "Território, trabalho e desigualdade", scope: "território, trabalho, acesso a serviços e desigualdade socioespacial" },
   "hum-democracia": { area: "Ciências Humanas", title: "Democracia, participação e memória", scope: "democracia, participação social, memória e fontes históricas" },
+  "mat-fracoes": { area: "Matemática", title: "Frações e números decimais", scope: "frações, comparação, soma de frações e conversão para decimal" },
+  "mat-proporcao": { area: "Matemática", title: "Razão, proporção e regra de três", scope: "razão, grandezas proporcionais e regra de três" },
+  "mat-equacoes": { area: "Matemática", title: "Equações e funções", scope: "equações do primeiro grau e funções simples do cotidiano" },
+  "mat-geometria": { area: "Matemática", title: "Geometria: perímetro, área e volume", scope: "perímetro, área e volume de figuras simples" },
+  "mat-probabilidade": { area: "Matemática", title: "Probabilidade e estatística", scope: "média, mediana, moda e probabilidade simples" },
+  "ling-coesao": { area: "Linguagens", title: "Coesão, sentido e variação linguística", scope: "conectivos, retomada por pronomes e variação linguística" },
+  "ling-redacao": { area: "Linguagens", title: "Redação: planejamento e argumentação", scope: "redação dissertativo-argumentativa: tema, tese, argumentos, estrutura, conectivos e proposta de intervenção" },
+  "ling-artes": { area: "Linguagens", title: "Arte, corpo e cultura", scope: "interpretação de obras de arte, manifestações culturais e práticas corporais" },
+  "ling-idiomas": { area: "Linguagens", title: "Leitura em inglês e espanhol", scope: "estratégias de leitura de textos simples em inglês e espanhol" },
+  "nat-materia": { area: "Ciências da Natureza", title: "Matéria, misturas e transformações", scope: "misturas, separação, estados físicos e transformações físicas e químicas" },
+  "nat-celulas": { area: "Ciências da Natureza", title: "Células, genética e evolução", scope: "célula, DNA, genes, hereditariedade e seleção natural" },
+  "nat-fisica": { area: "Ciências da Natureza", title: "Movimento, força e eletricidade", scope: "velocidade média, forças e circuitos elétricos simples" },
+  "hum-brasil": { area: "Ciências Humanas", title: "História do Brasil: colonização e escravidão", scope: "colonização, povos indígenas, escravidão, resistência e abolição" },
+  "hum-mundo": { area: "Ciências Humanas", title: "Industrialização, trabalho e sociedade", scope: "industrialização, urbanização e direitos trabalhistas" },
+  "hum-geografia": { area: "Ciências Humanas", title: "Clima, ambiente e globalização", scope: "tempo e clima, questões ambientais e globalização" },
+  "hum-filosofia": { area: "Ciências Humanas", title: "Ética, cultura e diversidade", scope: "ética, argumentação, cultura e respeito à diversidade" },
 };
 
 const json = (body: unknown, status = 200) =>
@@ -67,6 +83,15 @@ Deno.serve(async (request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const providers = ["DEEPSEEK", "GLM"].map((name) => ({ name, key: Deno.env.get(`NVIDIA_${name}_API_KEY`), model: Deno.env.get(`NVIDIA_${name}_MODEL`) })).filter((item) => item.key && item.model);
     if (!serviceKey || !supabaseUrl || !providers.length) return json({ error: "A explicação por IA ainda está em configuração." }, 503);
+    if (body?.diagnose === true && userId === "66e712ce-a1e2-4269-8cbf-91584ea2f5d1") {
+      const results = await Promise.all(providers.map(async (provider) => {
+        try {
+          const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", { method: "POST", signal: AbortSignal.timeout(15000), headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: provider.model, messages: [{ role: "user", content: "Oi" }], max_tokens: 20, stream: false }) });
+          return { provider: provider.name, model: /^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i.test(provider.model || "") ? provider.model : "invalid format", status: response.status };
+        } catch (error) { return { provider: provider.name, model: /^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i.test(provider.model || "") ? provider.model : "invalid format", error: error instanceof Error ? `${error.name}: ${error.message}` : "unknown" }; }
+      }));
+      return json({ results });
+    }
 
     const quotaResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_ai_explanation_quota`, {
       method: "POST",
