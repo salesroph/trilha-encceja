@@ -56,3 +56,4 @@ body[data-page=home] #review-banner{display:none}
   .finish-grid{grid-template-columns:1fr 1fr}.panel .q-text{font-size:16px}
   .tabs .nav{font-size:10.5px}
 }
+.reminders h3{margin:6px 0}.reminder-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}.reminder-form select{min-height:46px;border:1px solid #ccd9ce;border-radius:8px;padding:8px 10px;font-size:16px;background:white}.reminders .status{color:#426b50;font-size:14px}

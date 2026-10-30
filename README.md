@@ -16,6 +16,7 @@ Plataforma gratuita de estudos para o **ENCCEJA Ensino Médio**, pensada para o 
 - **Redação com correção por IA:** tema sorteado, rascunho salvo no aparelho, nota estimada por critério, pontos fortes, o que melhorar e um exemplo de reescrita.
 - **Simulados** de 10 questões gerados pela IA (ou sorteados das aulas).
 - **Contagem regressiva** até a data da prova.
+- **Lembretes no celular** (notificações push): 1 por dia, no horário escolhido, só se o aluno ainda não estudou. A mensagem muda conforme a situação: sumido há 2 dias ou mais, sequência em risco, revisões pendentes, prova chegando. No iPhone, exige o app instalado na tela inicial (iOS 16.4+).
 - **Conta opcional** para sincronizar o progresso entre aparelhos; **pode ser instalado** como app (PWA); **materiais oficiais** do Inep e um guia da prova.
 
 ## Como funciona
@@ -25,6 +26,7 @@ Plataforma gratuita de estudos para o **ENCCEJA Ensino Médio**, pensada para o 
 | Site | HTML, CSS e JavaScript puros, sem etapa de build. Publicado pelo GitHub Pages a partir da pasta `docs/`. |
 | Login e progresso | Supabase Auth e tabela `study_progress`, protegida por RLS (cada aluno só acessa os próprios dados). O site usa apenas a chave pública. |
 | IA | Função `explicar-aula` no Supabase (Edge Function), que chama modelos via NVIDIA (DeepSeek e, se falhar, GLM). As chaves ficam só nos segredos do Supabase. |
+| Lembretes | Função `lembretes`, chamada a cada hora pelo `pg_cron` do banco (`supabase/sql/04-agendamento-lembretes.sql`). Ela lê o progresso sincronizado do aluno e envia a notificação com chaves VAPID. |
 | Limite de uso | 30 usos de IA por aluno por dia e 300 no total por dia. Cada explicação, lote de 10 exercícios, simulado ou correção de redação conta 1. O controle é feito no banco. |
 
 ## Estrutura
@@ -55,6 +57,7 @@ docs/                         site publicado
 supabase/
 ├── config.toml
 ├── functions/explicar-aula/  IA: explicações, exercícios, simulados e correção de redação
+├── functions/lembretes/      lembretes diários por notificação
 └── sql/                      tabelas, políticas e limite de uso
 scripts/
 └── configurar-chaves-ia.ps1  grava as chaves da NVIDIA nos segredos do Supabase
@@ -75,6 +78,7 @@ Abra http://localhost:8000. O login e a prática funcionam localmente. A IA não
 - **Função de IA:**
   ```bash
   npx supabase functions deploy explicar-aula --project-ref osthfogyiubiieanzrkf --use-api
+  npx supabase functions deploy lembretes --project-ref osthfogyiubiieanzrkf --use-api --no-verify-jwt
   ```
 - **Banco:** os arquivos em `supabase/sql/` registram o que foi aplicado. Rode-os no SQL Editor do Supabase ao recriar o projeto.
 
@@ -85,6 +89,8 @@ Abra http://localhost:8000. O login e a prática funcionam localmente. A IA não
 | `NVIDIA_DEEPSEEK_API_KEY`, `NVIDIA_DEEPSEEK_MODEL` | Provedor principal |
 | `NVIDIA_GLM_API_KEY`, `NVIDIA_GLM_MODEL` | Provedor reserva |
 | `ADMIN_USER_ID` | (opcional) usuário autorizado a usar o modo de diagnóstico |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Chaves das notificações (função `lembretes`). A pública também está em `docs/js/account.js`. |
+| `CRON_SECRET` | Senha que o agendamento envia à função `lembretes`. O mesmo valor fica no Vault do banco (`lembretes_cron_secret`). |
 
 `scripts/configurar-chaves-ia.ps1` grava as duas chaves sem exibi-las na tela. Os nomes dos modelos são definidos com `npx supabase secrets set`.
 

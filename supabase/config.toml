@@ -1,3 +1,7 @@
 [auth]
 site_url = "https://salesroph.github.io/trilha-encceja/"
 additional_redirect_urls = ["https://salesroph.github.io/trilha-encceja/"]
+
+[functions.lembretes]
+# Chamada pelo pg_cron (com x-cron-secret) e pelo site (com o login do aluno); a função confere cada caso.
+verify_jwt = false

@@ -32,3 +32,36 @@ async function callTutor(body){
 window.requestAIExam=async area=>{const data=await callTutor({mode:'simulado',area});if(!Array.isArray(data?.questions)||!data.questions.length)throw new Error('unavailable');return data.questions};
 window.requestAIExercises=async lessons=>{const data=await callTutor({mode:'exercicios',lessons});if(!Array.isArray(data?.questions)||!data.questions.length)throw new Error('unavailable');return data.questions};
 window.requestEssayCorrection=async (tema,texto)=>{const data=await callTutor({mode:'redacao',tema,texto});if(typeof data?.nota!=='number')throw new Error('unavailable');return data};
+
+// Lembretes por notificação: a inscrição do aparelho fica na tabela push_subscriptions (só o próprio aluno acessa).
+const VAPID_PUBLIC_KEY='BJ_v_hdr5cuJ8Y7Bfnu_1PGfIhZ8uspGQn6PXpv8hXESGzd1ZxA__LCxIp3jZRdDwDwn2Xk7pjFcDY0zB-jqQes';
+const urlKey=b64=>{const p='='.repeat((4-b64.length%4)%4),raw=atob((b64+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(raw,c=>c.charCodeAt(0))};
+async function swRegistration(){if(!navigator.serviceWorker.controller)await navigator.serviceWorker.register('./sw.js',{scope:'./'});return navigator.serviceWorker.ready}
+window.pushReminders={
+  supported:()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window,
+  needsInstall:()=>/iphone|ipad|ipod/i.test(navigator.userAgent)&&!(navigator.standalone||matchMedia('(display-mode: standalone)').matches),
+  loggedIn:()=>!!user,
+  async status(){
+    if(!user||!this.supported()||Notification.permission==='denied')return {on:false,denied:Notification?.permission==='denied'};
+    const sub=await (await swRegistration()).pushManager.getSubscription();
+    if(!sub)return {on:false};
+    const {data}=await client.from('push_subscriptions').select('hour').eq('endpoint',sub.endpoint).maybeSingle();
+    return data?{on:true,hour:data.hour}:{on:false};
+  },
+  async enable(hour){
+    if(!user)throw new Error('signin');
+    if(await Notification.requestPermission()!=='granted')throw new Error('denied');
+    const reg=await swRegistration();
+    const subscribe=()=>reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlKey(VAPID_PUBLIC_KEY)});
+    const store=sub=>{const keys=sub.toJSON().keys;return client.from('push_subscriptions').upsert({endpoint:sub.endpoint,user_id:user.id,p256dh:keys.p256dh,auth:keys.auth,hour,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'America/Sao_Paulo'})};
+    let sub=await reg.pushManager.getSubscription()||await subscribe();
+    let {error}=await store(sub);
+    // O aparelho pode estar registrado em outra conta: cria uma inscrição nova para esta.
+    if(error){await sub.unsubscribe();sub=await subscribe();({error}=await store(sub))}
+    if(error)throw new Error('save');
+    await client.functions.invoke('lembretes',{body:{test:true}}).catch(()=>{});
+  },
+  async setHour(hour){const sub=await (await swRegistration()).pushManager.getSubscription();if(sub)await client.from('push_subscriptions').update({hour}).eq('endpoint',sub.endpoint)},
+  async disable(){const sub=await (await swRegistration()).pushManager.getSubscription();if(!sub)return;await client.from('push_subscriptions').delete().eq('endpoint',sub.endpoint);await sub.unsubscribe()},
+};
+if(document.body.dataset.page==='home'&&typeof renderReminders==='function')renderReminders();

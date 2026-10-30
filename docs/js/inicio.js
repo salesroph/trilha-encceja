@@ -30,6 +30,7 @@ function renderHome() {
 <section class="panel reinforce-panel">${due.length?`<div class="reinforce-item"><span>🔔 <b>${due.length}</b> ${due.length===1?'assunto para revisar hoje':'assuntos para revisar hoje'}</span><button class="button" type="button" onclick="startPractice({kind:'review'})">Revisar</button></div>`:''}
 ${weak.length?weak.map(l=>`<div class="reinforce-item"><span>${esc(l.title)}<small>${Math.round(accuracy(l.id)*100)}% de acerto</small></span><span><button class="text-button" type="button" onclick="openLesson('${l.id}')">Aula</button> · <button class="text-button" type="button" onclick="practiceLesson('${l.id}')">Treinar</button></span></div>`).join('')+`<button class="button secondary" type="button" onclick="startPractice({kind:'weak'})">Treinar todos os pontos fracos →</button>`:due.length?'':'<p>Nada pendente por aqui. Conforme você pratica, mostramos as revisões do dia e os assuntos em que você mais erra.</p>'}</section>
 <section class="panel exam-date">${exam!==null?`<div><span class="label">CONTAGEM REGRESSIVA</span><h3>${exam===0?'A prova é hoje! Boa sorte! 🍀':`Faltam <b>${exam}</b> ${exam===1?'dia':'dias'} para a prova`}</h3></div><button class="text-button" type="button" onclick="setExamDate()">Alterar data</button>`:`<div><span class="label">CONTAGEM REGRESSIVA</span><h3>Quando é a sua prova?</h3></div><button class="button secondary" type="button" onclick="setExamDate()">Definir data</button>`}</section>
+<section class="panel reminders" id="reminders"></section>
 <div class="section-head"><div><span class="label">SUAS CONQUISTAS</span><h2>${badges.filter(b=>b.got).length} de ${badges.length} conquistas</h2></div></div>
 <div class="badges">${badges.map(b=>`<div class="badge ${b.got?'got':''}" title="${esc(b.desc)}"><span>${b.got?'🏅':'🔒'}</span><b>${esc(b.name)}</b><small>${esc(b.desc)}</small></div>`).join('')}</div>
 <div class="section-head"><div><span class="label">TODAS AS AULAS</span><h2>Estude um assunto</h2></div></div>
@@ -41,6 +42,7 @@ ${weak.length?weak.map(l=>`<div class="reinforce-item"><span>${esc(l.title)}<sma
       return `<button class="lesson-link" type="button" onclick="openLesson('${l.id}')"><span class="status-dot ${kind}" aria-hidden="true">${statusIcon[kind]}</span><span class="lesson-name">${l.title}<small>${label}</small></span><span aria-hidden="true">→</span></button>`;
     }).join('')}</div></details>`;
   }).join('')}</div>`;
+  renderReminders();
   // Lembra qual área ficou aberta.
   app.querySelectorAll('details.area-card').forEach(d=>d.addEventListener('toggle',()=>{if(d.open){state.openArea=d.dataset.area;app.querySelectorAll('details.area-card').forEach(o=>{if(o!==d)o.open=false})}else if(state.openArea===d.dataset.area)delete state.openArea;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}));
 }
@@ -49,4 +51,25 @@ function setExamDate(){
   const box=document.querySelector('.exam-date');
   box.innerHTML=`<label for="exam-date-input"><span class="label">DATA DA PROVA</span></label><div class="exam-date-form"><input id="exam-date-input" type="date" min="${today()}" value="${state.examDate||''}"><button class="button" type="button" id="exam-date-save">Salvar</button></div>`;
   document.querySelector('#exam-date-save').onclick=()=>{const v=document.querySelector('#exam-date-input').value;if(v){state.examDate=v}else delete state.examDate;save();renderHome()};
+}
+
+// Cartão de lembretes por notificação (as funções de push ficam em account.js).
+const hourOptions=sel=>Array.from({length:17},(_,i)=>i+6).map(h=>`<option value="${h}"${h===sel?' selected':''}>${h}h</option>`).join('');
+async function renderReminders(message=''){
+  const box=document.querySelector('#reminders');if(!box)return;
+  const push=window.pushReminders,head='<span class="label">LEMBRETES NO CELULAR</span>';
+  const note=message?`<p class="status">${esc(message)}</p>`:'';
+  if(!push){box.innerHTML=`${head}<p>Carregando…</p>`;return}
+  if(push.needsInstall()){box.innerHTML=`${head}<h3>Receba um lembrete por dia 🔔</h3><p>No iPhone, primeiro instale o app: toque em <b>Compartilhar</b> ⬆️ e depois em <b>Adicionar à Tela de Início</b>. Abra o app pela tela inicial e ative os lembretes aqui.</p>`;return}
+  if(!push.supported()){box.innerHTML=`${head}<p>Este navegador não aceita notificações. No celular, use o Chrome (Android) ou instale o app.</p>`;return}
+  if(!push.loggedIn()){box.innerHTML=`${head}<h3>Receba um lembrete por dia 🔔</h3><p>Entre na sua conta (no fim desta página) para ativar os lembretes.</p>`;return}
+  let st;try{st=await push.status()}catch{st={on:false}}
+  if(st.denied){box.innerHTML=`${head}<h3>Notificações bloqueadas</h3><p>Você bloqueou as notificações deste app. Para ativar, libere nas configurações do navegador ou do celular e volte aqui.</p>`;return}
+  if(st.on){box.innerHTML=`${head}<h3>Lembretes ativados ✅</h3><p>Um lembrete por dia, só se você ainda não tiver estudado.</p><div class="reminder-form"><label for="reminder-hour">Horário</label><select id="reminder-hour">${hourOptions(st.hour)}</select><button class="text-button" type="button" id="reminder-off">Desativar</button></div>${note}`;
+    box.querySelector('#reminder-hour').onchange=async e=>{await push.setHour(Number(e.target.value));renderReminders('Horário atualizado.')};
+    box.querySelector('#reminder-off').onclick=async()=>{await push.disable();renderReminders('Lembretes desativados.')};return}
+  box.innerHTML=`${head}<h3>Receba um lembrete por dia 🔔</h3><p>A gente te avisa no horário escolhido, só nos dias em que você ainda não estudou.</p><div class="reminder-form"><label for="reminder-hour">Horário</label><select id="reminder-hour">${hourOptions(19)}</select><button class="button" type="button" id="reminder-on">Ativar lembretes</button></div>${note}`;
+  box.querySelector('#reminder-on').onclick=async e=>{e.target.disabled=true;e.target.textContent='Ativando…';
+    try{await push.enable(Number(box.querySelector('#reminder-hour').value));renderReminders('Pronto! Enviamos uma notificação de teste.')}
+    catch(err){renderReminders(err?.message==='denied'?'Você não permitiu as notificações. Toque em Ativar de novo e escolha “Permitir”.':'Não foi possível ativar agora. Tente de novo.')}};
 }
