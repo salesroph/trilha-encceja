@@ -56,12 +56,11 @@ ${note?`<div class="feedback">${esc(note)}</div>`:''}
 
 function finishExam(data){
   const {questions}=exam;let score=0;
+  markAnswers(document.querySelector('#exam-form'),questions.map(q=>q.correta),i=>data.get('e'+i));
   questions.forEach((q,i)=>{
     const chosen=data.get('e'+i),ok=chosen!==null&&Number(chosen)===q.correta;if(ok)score++;
     document.querySelector('#exam-feedback'+i).innerHTML=`<div class="feedback">${ok?'✓ Correta.':chosen===null?'Sem resposta.':'✗ Incorreta.'} Resposta: <b>${String.fromCharCode(65+q.correta)}</b>. ${esc(q.explicacao||'')}</div>`;
   });
-  document.querySelectorAll('#exam-form input').forEach(i=>i.disabled=true);
-  document.querySelector('#exam-form button[type=submit]').remove();
   const minutes=Math.max(1,Math.round((Date.now()-exam.started)/60000));
   state.simulados=(state.simulados||[]).concat({date:today(),area:exam.area,score,total:questions.length,ai:exam.ai}).slice(-30);save();
   const pct=Math.round(score/questions.length*100);
