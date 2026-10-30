@@ -28,27 +28,23 @@ const alternativeExplanations = {
   'hum-geografia': 'Tempo é o que acontece hoje (“está chovendo”); clima é o padrão de muitos anos (“aqui chove muito no verão”). Globalização é o mundo mais conectado: um celular pode ser projetado num país, montado em outro e vendido no mundo todo.',
   'hum-filosofia': 'Ética é parar para pensar se uma ação é justa, considerando as razões e as consequências para as outras pessoas. Respeitar a diversidade é reconhecer que culturas diferentes têm valor, sem tratar a própria como a única certa.'
 };
+// Um toque: a IA explica o assunto de outro jeito, do mais básico. Sem IA, mostra a explicação alternativa pronta.
 async function askTutor(id) {
   const panel=document.querySelector('#tutor-panel');
   if(!panel)return;
   panel.hidden=false;
-  if(panel.dataset.lesson===id){panel.scrollIntoView({behavior:'smooth',block:'nearest'});return;}
-  panel.dataset.lesson=id;
-  panel.innerHTML='<strong>Vamos tentar de outro jeito</strong><p>Conte sua dúvida se quiser. Você pode pedir até 5 explicações por dia.</p><label for="tutor-doubt">Qual parte ficou difícil?</label><textarea id="tutor-doubt" maxlength="400" rows="3" placeholder="Ex.: como encontro 20% de um valor?"></textarea><button class="button secondary" id="tutor-retry" type="button">Pedir explicação</button><p id="tutor-status" role="status"></p><div id="tutor-answer"></div>';
-  const status=panel.querySelector('#tutor-status'),answer=panel.querySelector('#tutor-answer'),retry=panel.querySelector('#tutor-retry');
-  async function explain(){
-    const doubt=panel.querySelector('#tutor-doubt').value.trim();
-    retry.disabled=true;status.textContent='Preparando outra explicação...';answer.textContent='';
-    try {
-      if(typeof window.requestLessonExplanation!=='function')throw new Error('unavailable');
-      const result=await window.requestLessonExplanation(id,doubt);
-      if(!result || typeof result!=='string')throw new Error('unavailable');
-      status.textContent='Uma nova explicação para você:';answer.textContent=result;
-    } catch(e) {
-      status.textContent=e?.message==='signin'?'Entre na sua conta para usar a explicação por IA. Enquanto isso, veja este outro jeito de entender:':e?.message==='quota'?'Você atingiu o limite de explicações por IA de hoje. Enquanto isso, veja este outro jeito de entender:':'A explicação por IA ainda não está disponível. Enquanto isso, veja este outro jeito de entender:';
-      answer.textContent=alternativeExplanations[id]||'Leia novamente os exemplos e tente identificar o passo que ficou mais difícil.';
-    } finally {retry.disabled=false;}
-  }
-  retry.onclick=explain;
+  if(panel.dataset.lesson===id&&panel.dataset.busy!=='1'&&panel.innerHTML){panel.scrollIntoView({behavior:'smooth',block:'nearest'});return;}
+  panel.dataset.lesson=id;panel.dataset.busy='1';
+  panel.innerHTML='<strong>Vamos de outro jeito 💡</strong><p id="tutor-status" role="status">Preparando uma explicação mais simples...</p><div id="tutor-answer"></div>';
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const status=panel.querySelector('#tutor-status'),answer=panel.querySelector('#tutor-answer');
+  try {
+    if(typeof window.requestLessonExplanation!=='function')throw new Error('unavailable');
+    const result=await window.requestLessonExplanation(id,'');
+    if(!result||typeof result!=='string')throw new Error('unavailable');
+    status.textContent='';answer.textContent=result;
+  } catch(e) {
+    status.textContent=e?.message==='signin'?'Entre na sua conta para receber explicações feitas pela IA. Por enquanto, veja este outro jeito de entender:':e?.message==='quota'?'Você usou as explicações por IA de hoje. Veja este outro jeito de entender:':'Veja este outro jeito de entender:';
+    answer.textContent=alternativeExplanations[id]||'Leia novamente os exemplos da aula e tente identificar o passo que ficou mais difícil.';
+  } finally {panel.dataset.busy='0';}
 }

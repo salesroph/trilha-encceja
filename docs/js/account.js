@@ -22,11 +22,13 @@ window.requestLessonExplanation=async (lessonId,doubt)=>{
   if(!data?.explanation)throw new Error('unavailable');
   return data.explanation;
 };
-window.requestAIExam=async area=>{
+async function callTutor(body){
   const {data:sessionData,error:sessionError}=await client.auth.getSession();
   if(sessionError||!sessionData.session)throw new Error('signin');
-  const {data,error}=await client.functions.invoke('explicar-aula',{body:{mode:'simulado',area}});
+  const {data,error}=await client.functions.invoke('explicar-aula',{body});
   if(error){const status=error.context?.status;throw new Error(status===401?'signin':status===429?'quota':'unavailable');}
-  if(!Array.isArray(data?.questions)||!data.questions.length)throw new Error('unavailable');
-  return data.questions;
-};
+  return data;
+}
+window.requestAIExam=async area=>{const data=await callTutor({mode:'simulado',area});if(!Array.isArray(data?.questions)||!data.questions.length)throw new Error('unavailable');return data.questions};
+window.requestAIExercises=async lessons=>{const data=await callTutor({mode:'exercicios',lessons});if(!Array.isArray(data?.questions)||!data.questions.length)throw new Error('unavailable');return data.questions};
+window.requestEssayCorrection=async (tema,texto)=>{const data=await callTutor({mode:'redacao',tema,texto});if(typeof data?.nota!=='number')throw new Error('unavailable');return data};

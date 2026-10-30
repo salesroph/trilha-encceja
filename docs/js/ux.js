@@ -1,4 +1,4 @@
-// Ajustes de navegação: marca a tela atual, volta ao topo a cada troca de tela e destaca acertos e erros.
+// Navegação (último script a carregar): marca a tela atual, volta ao topo a cada troca de tela e destaca acertos e erros.
 function markAnswers(form,correct,chosenAt){
   form.querySelectorAll('.question').forEach((question,i)=>{
     const options=question.querySelectorAll('.option'),chosen=chosenAt(i);
@@ -15,7 +15,7 @@ function showPage(page,fn){
   return function(...args){
     const result=fn.apply(this,args);
     document.body.dataset.page=page;
-    const nav={home:'#homeNav',lesson:'#homeNav',exam:'#examNav',sources:'#sourcesNav'}[page];
+    const nav={home:'#homeNav',lesson:'#homeNav',practice:'#homeNav',exam:'#examNav',essay:'#essayNav',sources:'#sourcesNav'}[page];
     document.querySelectorAll('.tabs .nav').forEach(b=>b.classList.toggle('active',b.matches(nav)));
     window.scrollTo(0,0);
     return result;
@@ -24,11 +24,14 @@ function showPage(page,fn){
 home=showPage('home',home);
 renderHome=showPage('home',renderHome);
 openLesson=showPage('lesson',openLesson);
-advance=showPage('lesson',advance);
+startPractice=showPage('practice',startPractice);
+finishPractice=showPage('practice',finishPractice);
+essayHome=showPage('essay',essayHome);
 sources=showPage('sources',sources);
 examHome=showPage('exam',examHome);
 renderExam=showPage('exam',renderExam);
 document.querySelector('#homeNav').onclick=home;
 document.querySelector('#sourcesNav').onclick=sources;
 document.querySelector('#examNav').onclick=examHome;
-document.body.dataset.page='home';
+document.querySelector('#essayNav').onclick=essayHome;
+home();

@@ -6,14 +6,17 @@ Plataforma gratuita de estudos para o **ENCCEJA Ensino Médio**, pensada para o 
 
 ## O que a plataforma oferece
 
-- **52 aulas** nas quatro áreas do exame (Matemática, Linguagens, Ciências da Natureza e Ciências Humanas), incluindo uma trilha de **redação**.
-- **Estudo em etapas:** explicação → exercícios → revisão no mesmo dia → revisão no dia seguinte.
-- **"Não entendi":** a IA explica a aula de outro jeito e responde à dúvida do aluno. Se a IA não estiver disponível, aparece uma explicação alternativa já pronta.
-- **Simulados:** a IA gera 10 questões inéditas no estilo do ENCCEJA a cada simulado. Sem login, o simulado é montado com questões sorteadas das aulas.
-- **Próximo passo na tela inicial**, com progresso por área e o estado de cada aula.
-- **Conta opcional** (e-mail e senha) para sincronizar o progresso entre aparelhos. Sem conta, o progresso fica salvo no navegador.
-- **Pode ser instalado** como app na tela inicial do celular (PWA).
-- **Materiais oficiais:** links para os livros do estudante e as provas anteriores do Inep, e um guia de como é a prova.
+- **Prática infinita, uma questão por tela.** O botão "Praticar agora" mistura revisões, pontos fracos e assuntos novos. Também dá para praticar uma área ou um assunto específico.
+  - **Matemática:** as questões são geradas pelo próprio app, com números sorteados e gabarito calculado (`js/geradores.js`). São infinitas e funcionam sem internet.
+  - **Outras áreas:** a IA gera lotes de questões novas em segundo plano. Sem login, ou quando a IA falha, as questões vêm do banco das aulas, evitando repetir as recentes.
+- **Revisão espaçada automática:** cada acerto aumenta o intervalo até a próxima revisão do assunto (1, 3, 7, 14, 30, 60 dias); cada erro traz o assunto de volta no dia seguinte. A tela inicial mostra as revisões do dia e os assuntos com menos de 60% de acerto.
+- **Motivação:** meta diária de 10 questões, dias seguidos estudando, pontos e níveis, 12 conquistas, mensagens de incentivo ("Essa era difícil! Parabéns") e um resumo ao fim de cada sessão.
+- **52 aulas** nas quatro áreas do exame, incluindo uma trilha de **redação**. Um assunto é considerado dominado com 5 acertos e pelo menos 60% de aproveitamento.
+- **"Não entendi":** com um toque, a IA explica o assunto de um jeito mais simples. Sem IA, aparece uma explicação alternativa pronta.
+- **Redação com correção por IA:** tema sorteado, rascunho salvo no aparelho, nota estimada por critério, pontos fortes, o que melhorar e um exemplo de reescrita.
+- **Simulados** de 10 questões gerados pela IA (ou sorteados das aulas).
+- **Contagem regressiva** até a data da prova.
+- **Conta opcional** para sincronizar o progresso entre aparelhos; **pode ser instalado** como app (PWA); **materiais oficiais** do Inep e um guia da prova.
 
 ## Como funciona
 
@@ -22,7 +25,7 @@ Plataforma gratuita de estudos para o **ENCCEJA Ensino Médio**, pensada para o 
 | Site | HTML, CSS e JavaScript puros, sem etapa de build. Publicado pelo GitHub Pages a partir da pasta `docs/`. |
 | Login e progresso | Supabase Auth e tabela `study_progress`, protegida por RLS (cada aluno só acessa os próprios dados). O site usa apenas a chave pública. |
 | IA | Função `explicar-aula` no Supabase (Edge Function), que chama modelos via NVIDIA (DeepSeek e, se falhar, GLM). As chaves ficam só nos segredos do Supabase. |
-| Limite de uso | 5 pedidos de IA por aluno por dia e 100 no total por dia. Cada explicação ou simulado conta 1. O controle é feito no banco. |
+| Limite de uso | 30 usos de IA por aluno por dia e 300 no total por dia. Cada explicação, lote de 10 exercícios, simulado ou correção de redação conta 1. O controle é feito no banco. |
 
 ## Estrutura
 
@@ -34,20 +37,24 @@ docs/                         site publicado
 ├── css/style.css
 ├── icons/
 └── js/
-    ├── app.js                aulas, etapas e exercícios
-    ├── inicio.js             tela inicial (próximo passo e áreas)
+    ├── app.js                estado, página da aula e materiais
+    ├── inicio.js             tela inicial (metas, áreas, reforço, conquistas)
+    ├── pratica.js            prática infinita, revisão espaçada, pontos e conquistas
+    ├── geradores.js          geradores de questões de Matemática
+    ├── redacao.js            redação com correção por IA
     ├── simulado.js           simulados
     ├── tutor.js              botão "Não entendi" e explicações alternativas
     ├── account.js            login, sincronização e chamadas à IA
     ├── pwa.js                aviso de instalação
     ├── ux.js                 navegação entre telas e destaque de acertos
     └── conteudo/             textos e questões das aulas
+        ├── aulas-base.js
         ├── aulas-extras.js
         ├── aulas-curriculo.js
         └── aulas-complementares.js
 supabase/
 ├── config.toml
-├── functions/explicar-aula/  explicações e simulados por IA
+├── functions/explicar-aula/  IA: explicações, exercícios, simulados e correção de redação
 └── sql/                      tabelas, políticas e limite de uso
 scripts/
 └── configurar-chaves-ia.ps1  grava as chaves da NVIDIA nos segredos do Supabase
@@ -60,7 +67,7 @@ cd docs
 python -m http.server 8000
 ```
 
-Abra http://localhost:8000. O login funciona localmente. A IA não funciona, porque a função só aceita chamadas do site publicado (CORS); nesse caso aparece a explicação alternativa.
+Abra http://localhost:8000. O login e a prática funcionam localmente. A IA não funciona, porque a função só aceita chamadas do site publicado (CORS); nesse caso aparece a explicação alternativa.
 
 ## Publicar
 
